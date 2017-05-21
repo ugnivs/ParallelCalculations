@@ -10,21 +10,27 @@ using namespace std;
 
 #define SIZE 5000
 //input matrix
+//входна€ матрица
 long double matrix[SIZE][SIZE], b[SIZE], x[SIZE], y[SIZE];
 //block sizes
+//размеры блоков дл€ тестов
 int block_sizes[] = { 0,2,5,10,20,50,100 };
 //start_time, end_time - start and end time of the experement
+//врем€ выполнени€ эксперемента
 //diff_time - time of an experement
 double start_time, end_time, diff_time;
 //output file
+//выходной файл
 ofstream fout;
 
 //Return min value
+//возвращает минимальное значение
 int min(int x, int y) {
 	return (x < y) ? x : y;
 }
 
 //Print given matrix
+//выводит матрицу на экран
 //size - size of current experiment matrix
 void print(int size) {
 	cout << "\n";
@@ -39,6 +45,7 @@ void print(int size) {
 }
 
 //Printing head for the experement
+//печататет заголовок эксперемента
 void print_head(int block_size = 0) {
 	fout << (block_size == 0 ? "–азмер блока = размеру матрицы" : "–азмер блока равен ") << block_size << "\t\n";
 	cout << (block_size == 0 ? "–азмер блока = размеру матрицы" : "–азмер блока равен ") << block_size << "\t\n";
@@ -47,6 +54,7 @@ void print_head(int block_size = 0) {
 }
 
 //Generate experiment matrix
+//генерирует случайную входную матрицу(одинакова дл€ каждого эксперимента)
 //size - size of current experiment matrix
 void generate_matrix(int size) {
 	srand(size);
@@ -65,6 +73,7 @@ void generate_matrix(int size) {
 }
 
 //Recursive parallel block lu decomposition
+//рекурсивное блочное lu разложение
 //matr - given matrix
 //block_size - size of a block
 //size - size of the matrix
@@ -76,6 +85,7 @@ void lu_decompose(long double matr[SIZE][SIZE], int block_size, int size, int s 
 #pragma omp parallel num_threads(nthreads) private(i,j,k,ii,jj,kk,factor)
 	{
 		//Solving for L11 and U11
+		//нахождение матриц L11 и U11
 		for (j = s; j < block_size - 1 + s; j++) {
 #pragma omp for
 			for (i = j + 1; i < block_size + s; i++) {
@@ -88,6 +98,7 @@ void lu_decompose(long double matr[SIZE][SIZE], int block_size, int size, int s 
 			}
 		}
 		//Solving for U12
+		//нахождение матрицы U12
 		for (j = block_size + s; j < size + s; j++) {
 #pragma omp for
 			for (i = 1 + s; i < block_size + s; i++) {
@@ -97,6 +108,7 @@ void lu_decompose(long double matr[SIZE][SIZE], int block_size, int size, int s 
 			}
 		}
 		//Solving for L12
+		//нахождение матрицы L12
 #pragma omp for 
 		for (i = s + block_size; i < size + s; i++) {
 			for (j = s; j < block_size + s; j++) {
@@ -108,6 +120,7 @@ void lu_decompose(long double matr[SIZE][SIZE], int block_size, int size, int s 
 			}
 		}
 		//Solving for reductive A22
+		//нахождение редуцированной матрицы A22
 #pragma omp for
 		for (ii = block_size + s; ii < size + s; ii += block_size) {
 			for (jj = block_size + s; jj < size + s; jj += block_size) {
@@ -124,12 +137,14 @@ void lu_decompose(long double matr[SIZE][SIZE], int block_size, int size, int s 
 		}
 	}
 	//Recursive lu factorization for A22
+	//рекурсивный вызов дл€ блока A22
 	if (size - block_size > 0) {
 		lu_decompose(matr, (block_size < size - block_size) ? block_size : size - block_size, size - block_size, block_size + s, nthreads);
 	}
 }
 
 //Solve lu decomosed matrix 
+//решение разложенной матрицы
 //size - size of current experiment matrix
 void solve(long double matr[SIZE][SIZE], int size) {
 	int i = 0, k = 0;
@@ -150,6 +165,7 @@ void solve(long double matr[SIZE][SIZE], int size) {
 }
 
 //Perform experement 
+//выполнение эксперемента
 void perform_experement(int blck_size = 0) {
 	//block_size - size of block for lu decomposition
 	//k - step for matrix size
@@ -158,6 +174,7 @@ void perform_experement(int blck_size = 0) {
 		fout << k << "\t";
 		cout << k << "\t";
 		//in one thread
+		//исполнение в один поток
 		generate_matrix(k);
 		block_size = (blck_size == 0) ? k : blck_size;
 		start_time = omp_get_wtime();
@@ -168,6 +185,7 @@ void perform_experement(int blck_size = 0) {
 		fout << diff_time << "\t";
 		cout << diff_time << "\t";
 		//in n threads
+		//исполнение использую все потоки
 		generate_matrix(k);
 		start_time = omp_get_wtime();
 		lu_decompose(matrix, block_size, k, 0, omp_get_max_threads());

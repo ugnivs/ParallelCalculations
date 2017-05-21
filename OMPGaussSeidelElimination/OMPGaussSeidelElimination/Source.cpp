@@ -162,7 +162,6 @@ public:
 
 class Solver {
 private:
-	const int K; // число итераций метода Зейделя
 	const int N; // размер исходной матрицы до блочного разбиения
 	const int r; // размер блока (обязан быть делителем N)
 	const int n; // размер блочной матрицы (в блоках), то есть N / r
@@ -173,11 +172,10 @@ private:
 
 
 public:
-	Solver(int N, int r, int K, const Matrix& a, const Matrix& b)
+	Solver(int N, int r, const Matrix& a, const Matrix& b)
 		: N(N)
 		, r(r)
 		, n(N / r)
-		, K(K)
 		, aBlocks(vector< vector<Matrix> >(n, vector<Matrix>(n))) // матрица из Matrix(r, r)
 		, aBlocksInverted(vector<Matrix>(n))                      // массив из Matrix(r, r)
 		, bBlocks(vector<Matrix>(n))                              // массив из Matrix(r, 1)
@@ -209,7 +207,7 @@ public:
 
 		Matrix tmp(r, 1);
 
-		for (int k = 0; k < K; ++k) {
+		while (!converge(xBlocks, xBlocksPrev, pow(10, -6))) {
 			xBlocksPrev.swap(xBlocks);
 			for (int i = 0; i < n; ++i) {
 				xBlocks[i] = bBlocks[i];
@@ -253,10 +251,10 @@ public:
 
 		Matrix tmp(r, 1);
 
-		for (int k = 0; k < K; ++k) {
+		while (!converge(xBlocks, xBlocksPrev, pow(10, -6))) {
 			xBlocksPrev.swap(xBlocks);
 
-#pragma omp parallel for firstprivate(tmp) schedule(dynamic, 1) num_threads(threadCount)
+#pragma omp parallel for firstprivate(tmp) num_threads(threadCount)
 			// * firstprivate(tmp) означает, что каждый поток получит свою копию
 			// исходной переменной tmp. Если указать private(tmp), то у каждого потока
 			// будет своя tmp, созданная конструктором по умолчанию.
@@ -272,7 +270,7 @@ public:
 			}
 
 			for (int t = 1; t < 2 * n; ++t) {
-#pragma omp parallel for firstprivate(tmp) schedule(dynamic, 1) num_threads(threadCount)
+#pragma omp parallel for firstprivate(tmp) num_threads(threadCount)
 				for (int j = fmax(0, t - n); j < t / 2; ++j) {
 					const int i = t - j - 1;
 					Product(tmp, aBlocks[i][j], xBlocks[j]);
@@ -299,6 +297,20 @@ private:
 			}
 		}
 		return x;
+	}
+	bool converge(const vector<Matrix>& xBlocks, const vector<Matrix>& xpBlocks, double eps) {
+		Matrix x, xp;
+		x = merge(xBlocks);
+		xp = merge(xpBlocks);
+		int s = x.GetN();
+		double norm = 0;
+		for (int i = 0; i < N; i++)
+		{
+			norm += (x(i, 0) - xp(i, 0))*(x(i, 0) - xp(i, 0));
+		}
+		if (sqrt(norm) >= eps)
+			return false;
+		return true;
 	}
 };
 
@@ -336,6 +348,7 @@ public:
 	}
 
 	Matrix GetB() const {
+		srand(n);
 		Matrix x(n, 1);
 		for (int i = 0; i < n; ++i) {
 			x(i, 0) = rand() % 2;
@@ -362,22 +375,37 @@ class ExperementPerformer
 public:
 	ExperementPerformer();
 	~ExperementPerformer();
+
+	void print_head(int block_size = 0) {
+		fout << (block_size == 0 ? "Размер блока = размеру матрицы" : "Размер блока равен ") << block_size << "\t\n";
+		std::cout << (block_size == 0 ? "Размер блока = размеру матрицы" : "Размер блока равен ") << block_size << "\t\n";
+		fout << "Размер матрицы" << "\t" << "1 поток" << "\t" << omp_get_max_threads() << "потоков" << "\t\n";
+		std::cout << "Размер матрицы" << "\t" << "1 поток" << "\t" << omp_get_max_threads() << "потоков" << "\t\n";
+	}
+
 	void perform_experement(int blck_size = 0) {
 		//block_size - size of block for lu decomposition
 		//k - step for matrix size
 		int block_size = 0, k = 0;
 		Solver *solver;
-		Matrix *x;
+		Matrix A, B;
+		TestInstanceGenerator *generator;
 		for (k = 1000; k <= 5000; k += 1000) {
-			TestInstanceGenerator generator(k);
+			generator = new TestInstanceGenerator(k);
+			A = generator->GetA();
+			B = generator->GetB();
 			fout << k << "\t";
 			std::cout << k << "\t";
 			//in one thread			
 			block_size = (blck_size == 0) ? k : blck_size;
-			solver = new Solver(k, block_size, 100, generator.GetA(), generator.GetB());
+			solver = new Solver(k, block_size, A, B);
+			if (block_size == k) {
+				solver->SerialSeidel();
+				continue;
+			}
 			solver->ParallelSeidel(1);
-			//in n threads
-			solver = new Solver(k, block_size, 100, generator.GetA(), generator.GetB());
+			//in n threads		
+			solver = new Solver(k, block_size, A, B);
 			solver->ParallelSeidel(omp_get_max_threads());
 			//
 			fout << std::endl;
@@ -398,8 +426,12 @@ ExperementPerformer::~ExperementPerformer()
 	fout.close();
 }
 int main() {
+	int block_sizes[] = { 0,2,5,10,20,50,100 };
 	ExperementPerformer *performer = new ExperementPerformer();
-	performer->perform_experement(10);
+	for (int i = 0; i < 6; i++) {
+		performer->print_head(block_sizes[i]);
+		performer->perform_experement(block_sizes[i]);
+	}
 	system("pause");
 	return 0;
 };
