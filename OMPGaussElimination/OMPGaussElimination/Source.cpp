@@ -16,7 +16,7 @@ long double matrix[SIZE][SIZE], b[SIZE], x[SIZE], y[SIZE];
 //размеры блоков для тестов
 int block_sizes[] = { 0,2,5,10,20,50,100 };
 //start_time, end_time - start and end time of the experement
-//время выполнения эксперемента
+//время выполнения эксперимента
 //diff_time - time of an experement
 double start_time, end_time, diff_time;
 //output file
@@ -30,7 +30,7 @@ int min(int x, int y) {
 }
 
 //Print given matrix
-//выводит матрицу на экран
+//вывод матрицы
 //size - size of current experiment matrix
 void print(int size) {
 	cout << "\n";
@@ -45,7 +45,7 @@ void print(int size) {
 }
 
 //Printing head for the experement
-//печататет заголовок эксперемента
+//печатает заголовок эксперимента
 void print_head(int block_size = 0) {
 	fout << (block_size == 0 ? "Размер блока = размеру матрицы" : "Размер блока равен ") << block_size << "\t\n";
 	cout << (block_size == 0 ? "Размер блока = размеру матрицы" : "Размер блока равен ") << block_size << "\t\n";
