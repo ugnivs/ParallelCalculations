@@ -10,18 +10,23 @@ using namespace std;
 
 #define SIZE 5000
 //input matricurrentValues
+//входна€ матрица
 long double matrix[SIZE][SIZE], b[SIZE], currentValues[SIZE], previousValues[SIZE];
 //block sizes
+//размеры блоков дл€ экспериментов
 int block_sizes[] = { 0,2,5,10,20,50,100 };
 //definite
+//точность вычислени€
 long double eps;
 //start_time, end_time - start and end time of the experement
+//врем€ выполнени€ эксперимент
 //diff_time - time of an experement
 double start_time, end_time, diff_time;
 //output file
 ofstream fout;
 
 //Print given matrix
+//вывод матрицы
 //size - size of current experiment matrix
 void print(int size) {
 	cout << "\n";
@@ -36,6 +41,7 @@ void print(int size) {
 }
 
 //Printing head for the experement
+//печатает заголовок эксперимента
 void print_head(int block_size = 0) {
 	fout << (block_size == 0 ? "–азмер блока = размеру матрицы" : "–азмер блока равен ") << block_size << "\t\n";
 	cout << (block_size == 0 ? "–азмер блока = размеру матрицы" : "–азмер блока равен ") << block_size << "\t\n";
@@ -44,11 +50,13 @@ void print_head(int block_size = 0) {
 }
 
 //Return min value
+//возвращает минимальное значение
 int min(int x, int y) {
 	return (x < y) ? x : y;
 }
 
 //Generate experiment matrix
+//генерирует случайную входную матрицу(одинакова дл€ каждого эксперимента)
 //size - size of current experiment matrix
 void generate_matrix(int size) {
 	srand(size);
@@ -67,6 +75,8 @@ void generate_matrix(int size) {
 	}
 }
 
+//solving
+//решение методом просты итераций
 void solve(long double matr[SIZE][SIZE], int size, int block_size, int nthreads = 1) {
 	while (true)
 	{
@@ -115,6 +125,7 @@ void perform_experement(int blck_size = 0) {
 		fout << k << "\t";
 		cout << k << "\t";
 		//in one threads
+		//исполнение одним потоком
 		generate_matrix(k);
 		block_size = (blck_size == 0) ? k : blck_size;
 		start_time = omp_get_wtime();
@@ -124,6 +135,7 @@ void perform_experement(int blck_size = 0) {
 		fout << diff_time << "\t";
 		cout << diff_time << "\t";
 		//in n threads
+		//исполнение всеми потоками
 		generate_matrix(k);
 		start_time = omp_get_wtime();
 		solve(matrix, k, block_size, omp_get_max_threads());
