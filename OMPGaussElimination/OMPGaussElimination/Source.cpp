@@ -1,8 +1,7 @@
-#include <stdio.h>
-#include <omp.h>
+п»ї#include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <math.h>
+#include <cmath>
 #include <iostream>
 #include <iomanip>
 #include <fstream>
@@ -10,14 +9,14 @@
 using namespace std;
 
 //input experiment configuration file
-//конфигурация эксперимента
+//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 ifstream inconfig;
 //output file
-//выходной файл
+//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 ofstream fout;
 
 //Print given matrix
-//вывод матрицы
+//пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 void print(double** matrix, double* b, int size) {
 	cout << "\n";
 	for (int i = 0; i < size; i++)
@@ -32,7 +31,7 @@ void print(double** matrix, double* b, int size) {
 }
 
 //Printing head for the experement
-//печатает заголовок эксперимента
+//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 void print_head(int matr_size) {
 	fout << "Matrix size = " << matr_size << "\n";
 	cout << "Matrix size = " << matr_size << "\n";
@@ -41,7 +40,7 @@ void print_head(int matr_size) {
 }
 
 //Alloc n,m matrix
-//Выделение памяти под матрицу n,m
+//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ n,m
 double** alloc_matrix(int n, int m) {
 	double** result = new double*[n];
 	for (int i = 0; i < n; i++)
@@ -56,7 +55,7 @@ void free_matrix(double** matrix, int size) {
 }
 
 //Generate random n,m matrix and vector b
-//Генерация случайно матрицы n,m и вектора b
+//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ n,m пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ b
 double** generate_matrix(int size, double* b) {
 	double** matrix = alloc_matrix(size, size);
 	srand(size);
@@ -80,32 +79,32 @@ int min(int x, int y) {
 }
 
 //LU decomposition of the matrix
-//LU разложение матрицы
+//LU пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 double** lu_decompose(double** matrix, int size, int block_size, int s = 0) {
 	int i = 0, j = 0, k = 0, ii = 0, jj = 0, kk = 0;
 	double factor;
 	//Solving for L11 and U11
-	//нахождение матриц L11 и U11
+	//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ L11 пїЅ U11
 	for (j = s; j < block_size - 1 + s; j++) {
 		for (i = j + 1; i < block_size + s; i++) {
 			factor = matrix[i][j] / matrix[j][j];
 			for (k = j; k < block_size + s; k++) {
-				matrix[i][k] = matrix[i][k] - (matrix[j][k] * factor);
+				matrix[i][k] -= (matrix[j][k] * factor);
 			}
 			matrix[i][j] = factor;
 		}
 	}
 	//Solving for U12
-	//нахождение матрицы U12
+	//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ U12
 	for (j = block_size + s; j < size + s; j++) {
 		for (i = 1 + s; i < block_size + s; i++) {
 			for (k = s; k < i; k++) {
-				matrix[i][j] = matrix[i][j] - matrix[i][k] * matrix[k][j];
+				matrix[i][j] -= matrix[i][k] * matrix[k][j];
 			}
 		}
 	}
 	//Solving for L12
-	//нахождение матрицы L12
+	//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ L12
 	for (i = s + block_size; i < size + s; i++) {
 		for (j = s; j < block_size + s; j++) {
 			factor = matrix[j][j];
@@ -116,7 +115,7 @@ double** lu_decompose(double** matrix, int size, int block_size, int s = 0) {
 		}
 	}
 	//Solving for reductive A22
-	//нахождение редуцированной матрицы A22
+	//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ A22
 	for (ii = block_size + s; ii < size + s; ii += block_size)
 		for (jj = block_size + s; jj < size + s; jj += block_size)
 			for (kk = s; kk < block_size + s; kk += block_size)
@@ -125,7 +124,7 @@ double** lu_decompose(double** matrix, int size, int block_size, int s = 0) {
 						for (k = kk; k < min(kk + block_size, block_size + s); k++)
 							matrix[i][j] -= matrix[i][k] * matrix[k][j];
 	//Recursive lu factorization for A22
-	//рекурсивный вызов для блока A22
+	//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ A22
 	int next_size = size - block_size;
 	if (next_size > 0) {
 		return lu_decompose(matrix, next_size, (block_size < next_size) ? block_size : next_size, block_size + s);
@@ -134,7 +133,7 @@ double** lu_decompose(double** matrix, int size, int block_size, int s = 0) {
 }
 
 //Solve lu decomosed matrix 
-//решение разложенной матрицы
+//пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 void solve(double** matrix, double* b, double*x, int size, int block_size) {
 	int i = 0, k = 0;
 	lu_decompose(matrix, size, block_size);
@@ -173,10 +172,9 @@ int main() {
 		x = new double[matr_size];
 		matrix = generate_matrix(matr_size, b);
 		start_block_size = start_block_size == 0 ? matr_size : start_block_size;
-		start_block_size = matr_size;
-		start_watch = omp_get_wtime();
+		start_watch = clock();
 		solve(matrix, b, x, matr_size, start_block_size);
-		end_watch = omp_get_wtime() - start_watch;
+		end_watch = (clock() - start_watch) / 1000;
 		fout << start_block_size << "\t\t" << end_watch << "\t\t" << std::log(start_block_size) << "\t\t" << std::log(end_watch) << "\t\t\n";
 		cout << start_block_size << std::setw(20) << end_watch << std::setw(15) << std::log(start_block_size) << std::setw(20) << std::log(end_watch) << "\n";
 		if (start_block_size == last_block_size)

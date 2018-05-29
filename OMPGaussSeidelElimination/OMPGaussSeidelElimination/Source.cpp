@@ -1,8 +1,7 @@
-#include <stdio.h>
-#include <omp.h>
+п»ї#include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <math.h>
+#include <cmath>
 #include <iostream>
 #include <iomanip>
 #include <fstream>
@@ -10,14 +9,14 @@
 using namespace std;
 
 //input experiment configuration file
-//конфигурация эксперимента
+//РєРѕРЅС„РёРіСѓСЂР°С†РёСЏ СЌРєСЃРїРµСЂРёРјРµРЅС‚Р°
 ifstream inconfig;
 //output file
-//выходной файл
+//РІС‹С…РѕРґРЅРѕР№ С„Р°Р№Р»
 ofstream fout;
 
 //Print given matrix
-//вывод матрицы
+//РІС‹РІРѕРґ РјР°С‚СЂРёС†С‹
 void print(double** matrix, double* b, int size) {
 	cout << "\n";
 	for (int i = 0; i < size; i++)
@@ -32,7 +31,7 @@ void print(double** matrix, double* b, int size) {
 }
 
 //Printing head for the experement
-//печатает заголовок эксперимента
+//РїРµС‡Р°С‚Р°РµС‚ Р·Р°РіРѕР»РѕРІРѕРє СЌРєСЃРїРµСЂРёРјРµРЅС‚Р°
 void print_head(int matr_size) {
 	fout << "Matrix size = " << matr_size << "\n";
 	cout << "Matrix size = " << matr_size << "\n";
@@ -41,7 +40,7 @@ void print_head(int matr_size) {
 }
 
 //Alloc n,m matrix
-//Выделение памяти под матрицу n,m
+//Р’С‹РґРµР»РµРЅРёРµ РїР°РјСЏС‚Рё РїРѕРґ РјР°С‚СЂРёС†Сѓ n,m
 double** alloc_matrix(int n, int m) {
 	double** result = new double*[n];
 	for (int i = 0; i < n; i++)
@@ -56,7 +55,7 @@ void free_matrix(double** matrix, int size) {
 }
 
 //Generate random n,m matrix and vector b
-//Генерация случайно матрицы n,m и вектора b
+//Р“РµРЅРµСЂР°С†РёСЏ СЃР»СѓС‡Р°Р№РЅРѕ РјР°С‚СЂРёС†С‹ n,m Рё РІРµРєС‚РѕСЂР° b
 double** generate_matrix(int size, double* b) {
 	double** matrix = alloc_matrix(size, size);
 	srand(size);
@@ -75,68 +74,66 @@ double** generate_matrix(int size, double* b) {
 	return matrix;
 }
 
-//LU decomposotion of the matrix
-//LU разложение матрицы
+int min(int x, int y) {
+	return (x < y) ? x : y;
+}
+
+//LU decomposition of the matrix
+//LU пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 double** lu_decompose(double** matrix, int size, int block_size, int s = 0) {
 	int i = 0, j = 0, k = 0, ii = 0, jj = 0, kk = 0;
 	double factor;
 	//Solving for L11 and U11
-	//нахождение матриц L11 и U11
+	//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ L11 пїЅ U11
 	for (j = s; j < block_size - 1 + s; j++) {
 		for (i = j + 1; i < block_size + s; i++) {
 			factor = matrix[i][j] / matrix[j][j];
-			for (k = s; k < block_size + s; k++) {
-				if (k < j)continue;
-				matrix[i][k] = matrix[i][k] - (matrix[j][k] * factor);
+			for (k = j; k < block_size + s; k++) {
+				matrix[i][k] -= (matrix[j][k] * factor);
 			}
 			matrix[i][j] = factor;
 		}
 	}
 	//Solving for U12
-	//нахождение матрицы U12
+	//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ U12
 	for (j = block_size + s; j < size + s; j++) {
 		for (i = 1 + s; i < block_size + s; i++) {
 			for (k = s; k < i; k++) {
-				matrix[i][j] = matrix[i][j] - matrix[i][k] * matrix[k][j];
+				matrix[i][j] -= matrix[i][k] * matrix[k][j];
 			}
 		}
 	}
 	//Solving for L12
-	//нахождение матрицы L12
+	//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ L12
 	for (i = s + block_size; i < size + s; i++) {
 		for (j = s; j < block_size + s; j++) {
 			factor = matrix[j][j];
 			for (k = s; k < j; k++) {
-				matrix[i][j] = matrix[i][j] - matrix[i][k] * matrix[k][j];
+				matrix[i][j] -= matrix[i][k] * matrix[k][j];
 			}
 			matrix[i][j] /= factor;
 		}
 	}
 	//Solving for reductive A22
-	//нахождение редуцированной матрицы A22
-	for (ii = block_size + s; ii < size + s; ii += block_size) {
-		for (jj = block_size + s; jj < size + s; jj += block_size) {
-			for (kk = s; kk < block_size + s; kk += block_size) {
-				for (i = ii; i < fmin(ii + block_size, size + s); i++) {
-					for (j = jj; j < fmin(jj + block_size, size + s); j++) {
-						for (k = kk; k < fmin(kk + block_size, block_size + s); k++) {
+	//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ A22
+	for (ii = block_size + s; ii < size + s; ii += block_size)
+		for (jj = block_size + s; jj < size + s; jj += block_size)
+			for (kk = s; kk < block_size + s; kk += block_size)
+				for (i = ii; i < min(ii + block_size, size + s); i++)
+					for (j = jj; j < min(jj + block_size, size + s); j++)
+						for (k = kk; k < min(kk + block_size, block_size + s); k++)
 							matrix[i][j] -= matrix[i][k] * matrix[k][j];
-						}
-					}
-				}
-			}
-		}
-	}
 	//Recursive lu factorization for A22
-	//рекурсивный вызов для блока A22
-	if (size - block_size > 0) {
-		return lu_decompose(matrix, (block_size < size - block_size) ? block_size : size - block_size, size - block_size, block_size + s);
+	//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ A22
+	int next_size = size - block_size;
+	if (next_size > 0) {
+		return lu_decompose(matrix, next_size, (block_size < next_size) ? block_size : next_size, block_size + s);
 	}
 	return matrix;
 }
 
 //Inversing matrix
-//Вычисление обратной матрицы
+//Р’С‹С‡РёСЃР»РµРЅРёРµ РѕР±СЂР°С‚РЅРѕР№ РјР°С‚СЂРёС†С‹
 double** inverse(double** matrix, int size, int block_size) {
 	int i, j, k;
 	double s;
@@ -144,7 +141,7 @@ double** inverse(double** matrix, int size, int block_size) {
 	lu_decompose(matrix, size, block_size);
 
 	//Inversing U
-	//Нахождение обратной матрицы U
+	//РќР°С…РѕР¶РґРµРЅРёРµ РѕР±СЂР°С‚РЅРѕР№ РјР°С‚СЂРёС†С‹ U
 	for (i = size - 1; i >= 0; i--) {
 		for (j = size - 1; j >= i; j--) {
 			if (i == j) {
@@ -160,7 +157,7 @@ double** inverse(double** matrix, int size, int block_size) {
 		}
 	}
 	//Inversing L
-	//Нахождение обратной матрицы L
+	//РќР°С…РѕР¶РґРµРЅРёРµ РѕР±СЂР°С‚РЅРѕР№ РјР°С‚СЂРёС†С‹ L
 	for (i = 1; i < size; i++) {
 		for (j = 0; j < i; j++) {
 			for (k = 0; k < j; k++)
@@ -169,7 +166,7 @@ double** inverse(double** matrix, int size, int block_size) {
 		}
 	}
 	//Multiplying U inversion with L inversion
-	//Нахождение обратной матрицы исходной, путем перемножения обратных матриц U и L
+	//РќР°С…РѕР¶РґРµРЅРёРµ РѕР±СЂР°С‚РЅРѕР№ РјР°С‚СЂРёС†С‹ РёСЃС…РѕРґРЅРѕР№, РїСѓС‚РµРј РїРµСЂРµРјРЅРѕР¶РµРЅРёСЏ РѕР±СЂР°С‚РЅС‹С… РјР°С‚СЂРёС† U Рё L
 	for (i = 0; i < size; i++) {
 		for (j = 0; j < size; j++) {
 			s = 0;
@@ -183,7 +180,7 @@ double** inverse(double** matrix, int size, int block_size) {
 }
 
 //Array of diagonal inversions
-//Массив обратных диагональных матриц
+//РњР°СЃСЃРёРІ РѕР±СЂР°С‚РЅС‹С… РґРёР°РіРѕРЅР°Р»СЊРЅС‹С… РјР°С‚СЂРёС†
 double*** d_inversions(double** matrix, int size, int block_size) {
 	int i, j, k, num_blocks = size / block_size;
 	double*** dInv = new double**[num_blocks];
@@ -200,9 +197,9 @@ double*** d_inversions(double** matrix, int size, int block_size) {
 }
 
 //Block Seidel elimination
-//Блочный метод Зейделя
+//Р‘Р»РѕС‡РЅС‹Р№ РјРµС‚РѕРґ Р—РµР№РґРµР»СЏ
 void solve_block(double** matrix, double* b, int size, int block_size, int K) {
-	int i, j, i_b, j_b, k = 0;
+	int i, j, i_b, j_b, k = 0, num_blocks = size / block_size;
 	double*** dInv = d_inversions(matrix, size, block_size);
 	double* mult = new double[size];
 	double* x = new double[size];
@@ -242,10 +239,16 @@ void solve_block(double** matrix, double* b, int size, int block_size, int K) {
 		}
 		k++;
 	}
+	delete[]mult;
+	delete[]x;
+	delete[]x0;
+	for (i = 0; i < num_blocks; i++)
+		free_matrix(dInv[i], block_size);
+	delete[]dInv;
 }
 
 //Classic Seidel elimination
-//Точечный метод Зейделя
+//РўРѕС‡РµС‡РЅС‹Р№ РјРµС‚РѕРґ Р—РµР№РґРµР»СЏ
 void solve(double** matrix, double* b, int size, int K) {
 	int i, j, k = 0;
 	double mult, dInv;
@@ -277,6 +280,8 @@ void solve(double** matrix, double* b, int size, int K) {
 		}
 		k++;
 	}
+	delete[]x;
+	delete[]x0;
 }
 
 int main() {
@@ -292,18 +297,18 @@ int main() {
 	double** matrix = generate_matrix(matr_size, b);
 	while (start_block_size <= last_block_size) {
 		if (matr_size%start_block_size == 0) {
-			start_watch = omp_get_wtime();
+			start_watch = clock();
 			solve_block(matrix, b, matr_size, start_block_size, iter_count);
-			end_watch = omp_get_wtime() - start_watch;
+			end_watch = (clock() - start_watch) / 1000;
 			fout << start_block_size << "\t\t" << end_watch << "\t\t" << std::log(start_block_size) << "\t\t" << std::log(end_watch) << "\t\t\n";
 			cout << start_block_size << std::setw(20) << end_watch << std::setw(15) << std::log(start_block_size) << std::setw(20) << std::log(end_watch) << "\n";
 		}
 		start_block_size += start_block_size < middle_block_size ? small_step : big_step;
 	}
 	//Classic
-	start_watch = omp_get_wtime();
+	start_watch = clock();
 	solve(matrix, b, matr_size, iter_count);
-	end_watch = omp_get_wtime() - start_watch;
+	end_watch = (clock() - start_watch) / 1000;
 	fout << start_block_size << "\t\t" << end_watch << "\t\t" << std::log(start_block_size) << "\t\t" << std::log(end_watch) << "\t\t\n";
 	cout << 1 << std::setw(20) << end_watch << std::setw(15) << std::log(1) << std::setw(20) << std::log(end_watch) << "\n";
 	//
