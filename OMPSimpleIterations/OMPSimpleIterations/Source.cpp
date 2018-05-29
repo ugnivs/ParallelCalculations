@@ -11,13 +11,10 @@ using namespace std;
 #define SIZE 5000
 //input matricurrentValues
 //входная матрица
-long double matrix[SIZE][SIZE], b[SIZE], currentValues[SIZE], previousValues[SIZE];
-//block sizes
-//размеры блоков для экспериментов
-int block_sizes[] = { 0,2,5,10,20,50,100 };
-//definite
-//точность вычисления
-long double eps;
+double matrix[SIZE][SIZE], b[SIZE];
+//solution matrix
+//матрица решения
+double solution[SIZE][SIZE], b_s[SIZE], currentValues_s[SIZE], previousValues_s[SIZE];
 //start_time, end_time - start and end time of the experement
 //время выполнения эксперимент
 //diff_time - time of an experement
@@ -28,25 +25,25 @@ ofstream fout;
 //Print given matrix
 //вывод матрицы
 //size - size of current experiment matrix
-void print(int size) {
+void print(double matr[SIZE][SIZE]) {
 	cout << "\n";
-	for (int i = 0; i < size; i++)
+	for (int i = 0; i < SIZE; i++)
 	{
-		for (int j = 0; j < size; j++)
+		for (int j = 0; j < SIZE; j++)
 		{
-			cout << matrix[i][j] << " ";
+			cout << matr[i][j] << " ";
 		}
 		cout << "\n";
 	}
+	for (int j = 0; j < SIZE; j++)
+		cout << b[j] << " ";
 }
 
 //Printing head for the experement
 //печатает заголовок эксперимента
 void print_head(int block_size = 0) {
-	fout << (block_size == 0 ? "Размер блока = размеру матрицы" : "Размер блока равен ") << block_size << "\t\n";
-	cout << (block_size == 0 ? "Размер блока = размеру матрицы" : "Размер блока равен ") << block_size << "\t\n";
-	fout << "Размер матрицы" << "\t" << "1 поток" << "\t" << omp_get_max_threads() << "потоков" << "\t\n";
-	cout << "Размер матрицы" << "\t" << "1 поток" << "\t" << omp_get_max_threads() << "потоков" << "\t\n";
+	fout << "Block size" << "\t" << "time" << "\t" << "ln(Block size)" << "\t" << "ln(time)" << "\t";
+	cout << "Block size" << "\t" << "time" << "\t" << "ln(Block size)" << "\t" << "ln(time)" << "\t";
 }
 
 //Return min value
@@ -71,91 +68,85 @@ void generate_matrix(int size) {
 		matrix[i][i] = diag_dominant + 1;
 		diag_dominant = 0;
 		b[i] = rand() % 2;
-		previousValues[i] = 0;
+	}
+}
+
+//Reset experiment
+void reset(int size) {
+	for (int i = 0; i < size; i++) {
+		b_s[i] = b[i];
+		previousValues_s[i] = 0;
+		currentValues_s[i] = 0;
+		for (int j = 0; j < size; j++) {
+			solution[i][j] = matrix[i][j];
+		}
 	}
 }
 
 //solving
 //решение методом просты итераций
-void solve(long double matr[SIZE][SIZE], int size, int block_size, int nthreads = 1) {
-	while (true)
+void solve(double matr[SIZE][SIZE], int size, int block_size) {
+	int iter = 0;
+	while (iter <= 100)
 	{
 		int i = 0, j = 0, ii = 0, jj = 0;
-#pragma omp parallel for num_threads(nthreads)
 		for (ii = 0; ii < size; ii += block_size) {
 			for (jj = 0; jj < size; jj += block_size) {
 				for (i = ii; i < min(ii + block_size, size); i++) {
 					if (jj == 0)
-						currentValues[i] = b[i];
+						currentValues_s[i] = b[i];
 					for (j = jj; j < min(jj + block_size, size); j++) {
 						if (i != j)
-							currentValues[i] -= matr[i][j] * previousValues[j];
+							currentValues_s[i] -= matr[i][j] * previousValues_s[j];
 					}
 					if (jj + block_size == size)
-						currentValues[i] /= matr[i][i];
+						currentValues_s[i] /= matr[i][i];
 				}
 			}
 		}
 
-		long double error = 0.0;
-
-		for (int i = 0; i < size; i++)
-		{
-			error += abs(currentValues[i] - previousValues[i]);
-		}
-
-		if (error < eps)
-		{
-			break;
-		}
-
 		for (int i = 0; i < size; i++) {
-			previousValues[i] = currentValues[i];
+			previousValues_s[i] = currentValues_s[i];
 		}
+		iter++;
 	}
 }
 
 //Perform experement 
-void perform_experement(int blck_size = 0) {
+void perform_experement(int matr_size = 0) {
+	generate_matrix(matr_size);
+	fout << matr_size << "\t\n";
+	cout << matr_size << "\t\n";
 	//block_size - size of block for lu decomposition
 	//k - step for matrix size
-	int block_size = 0, k = 0;
-	eps = pow(10, -6);
-	for (k = 100; k <= 500; k += 100) {
-		fout << k << "\t";
-		cout << k << "\t";
-		//in one threads
-		//исполнение одним потоком
-		generate_matrix(k);
-		block_size = (blck_size == 0) ? k : blck_size;
+	int block_size = 10;
+	//in one threads
+	//исполнение одним потоком
+	while (block_size <= 2000) {
+		reset(matr_size);
 		start_time = omp_get_wtime();
-		solve(matrix, k, block_size);
+		solve(solution, matr_size, block_size);
 		end_time = omp_get_wtime();
 		diff_time = difftime(end_time, start_time);
-		fout << diff_time << "\t";
-		cout << diff_time << "\t";
-		//in n threads
-		//исполнение всеми потоками
-		generate_matrix(k);
-		start_time = omp_get_wtime();
-		solve(matrix, k, block_size, omp_get_max_threads());
-		end_time = omp_get_wtime();
-		diff_time = difftime(end_time, start_time);
-		fout << diff_time << "\t";
-		cout << diff_time << "\t";
-		//
+		fout << block_size << "\t" << diff_time << "\t\t" << log(block_size) << "\t" << log(diff_time) << "\t";
+		cout << block_size << "\t" << diff_time << "\t\t" << log(block_size) << "\t" << log(diff_time) << "\t";
 		fout << endl;
 		cout << endl;
+		if (block_size == 2000) {
+			block_size = matr_size;
+			continue;
+		}
+		block_size += (block_size < 50) ? 10 : 50;
 	}
+	fout << endl;
+	cout << endl;
 }
 
 int main()
 {
 	fout.open("results.xls");
-	for (int i = 0; i < 6; i++) {
-		print_head(block_sizes[i]);
-		perform_experement(block_sizes[i]);
-	}
+	print_head(SIZE);
+	perform_experement(SIZE);
 	fout.close();
 	return 0;
 }
